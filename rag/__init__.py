@@ -23,6 +23,15 @@ from rag.generation import (
     generate_grounded_answer,
     build_context_string,
 )
+from rag.db import (
+    get_rag_database,
+    MongoRAGDatabase,
+)
+from rag.mcp_tools import (
+    mcp_server,
+    execute_mcp_chunking,
+    execute_mcp_retrieval,
+)
 
 __all__ = [
     "AppConfig",
@@ -41,4 +50,9 @@ __all__ = [
     "format_citations",
     "generate_grounded_answer",
     "build_context_string",
+    "get_rag_database",
+    "MongoRAGDatabase",
+    "mcp_server",
+    "execute_mcp_chunking",
+    "execute_mcp_retrieval",
 ]

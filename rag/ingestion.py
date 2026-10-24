@@ -254,4 +254,44 @@ def index_chunks_to_qdrant(
     ]
     
     vector_store.add_documents(chunks, ids=deterministic_ids)
+
+    # Automatically sync chunks to MongoDB
+    try:
+        from rag.db import get_rag_database
+        db = get_rag_database()
+        db.save_chunks(doc_id, chunks)
+    except Exception:
+        pass
+
     return len(chunks)
+
+
+def ingest_document_pipeline(
+    file_bytes: bytes,
+    filename: str,
+    chunk_size: Optional[int] = None,
+    chunk_overlap: Optional[int] = None
+) -> Dict[str, Any]:
+    """
+    Executes the end-to-end ingestion pipeline:
+    1. Computes SHA-256 doc_id fingerprint.
+    2. Extracts 1-indexed pages from PDF bytes.
+    3. Executes MCP chunking, saves chunks to MongoDB, and indexes to Qdrant Cloud.
+    """
+    from rag.mcp_tools import execute_mcp_chunking
+    
+    doc_id = compute_document_id(file_bytes, filename)
+    pages = load_pdf_from_bytes(file_bytes, filename)
+    
+    mcp_result = execute_mcp_chunking(
+        doc_id=doc_id,
+        filename=filename,
+        pages=pages,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        store_in_qdrant=True
+    )
+    
+    mcp_result["total_pages"] = len(pages)
+    return mcp_result
+

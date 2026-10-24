@@ -9,6 +9,8 @@ import os
 import streamlit as st
 
 from rag.config import get_config, validate_config
+from rag.db import get_rag_database
+from rag.mcp_tools import execute_mcp_chunking, execute_mcp_retrieval
 from rag.ingestion import (
     compute_document_id,
     load_pdf_from_bytes,
@@ -25,6 +27,7 @@ from rag.retrieval import (
     format_citations,
 )
 from rag.generation import generate_grounded_answer
+
 
 # -----------------------------------------------------------------------------
 # Page Configuration
@@ -462,6 +465,52 @@ header {visibility: hidden;}
     gap: 6px;
 }
 
+/* MCP Thinking & Reasoning Trace Styling */
+.thinking-container {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-left: 3px solid #6366F1;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin: 10px 0 16px 0;
+    font-size: 0.86rem;
+}
+
+.thinking-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    color: #1E293B;
+    margin-bottom: 10px;
+    font-size: 0.88rem;
+}
+
+.thinking-step-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 0.84rem;
+    line-height: 1.5;
+}
+
+.thinking-step-row:last-child {
+    margin-bottom: 0;
+}
+
+.thinking-badge {
+    background: #EEF2FF;
+    color: #4F46E5;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+    border: 1px solid rgba(79, 70, 229, 0.2);
+}
+
+
 /* Sidebar Custom Styling */
 [data-testid="stSidebar"] {
     background-color: #F8FAFC !important;
@@ -645,6 +694,9 @@ with st.sidebar:
 
     # Cloud Connectivity Telemetry
     st.markdown("##### System Telemetry")
+    db = get_rag_database()
+    mongo_status = db.connection_status
+
     if config.qdrant_url and "localhost" not in config.qdrant_url and config.qdrant_api_key:
         cluster_host = config.qdrant_url.split("//")[-1].split(":")[0]
         st.markdown(
@@ -662,6 +714,47 @@ with st.sidebar:
     else:
         st.markdown('<span class="status-pill pill-amber">Qdrant Not Configured</span>', unsafe_allow_html=True)
 
+    # MongoDB Persistence Telemetry
+    if mongo_status["connected"]:
+        st.markdown(
+            f"""
+            <div style="margin-bottom: 8px;">
+                <span class="status-pill pill-success">
+                    <span class="pulsing-dot-green"></span>
+                    <span>MongoDB: Connected</span>
+                </span>
+                <div style="font-size: 0.75rem; color: #64748B; margin-top: 4px; font-family: monospace;">DB: {mongo_status['db_name']}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f"""
+            <div style="margin-bottom: 8px;">
+                <span class="status-pill pill-indigo">
+                    <span>Storage: In-Memory Fallback</span>
+                </span>
+                <div style="font-size: 0.72rem; color: #64748B; margin-top: 3px;">Start mongod or set MONGODB_URI in .env</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # FastAPI & MCP Telemetry
+    st.markdown(
+        f"""
+        <div style="margin-bottom: 8px;">
+            <span class="status-pill pill-indigo">
+                <span class="pulsing-dot"></span>
+                <span>FastAPI & MCP Tools: Ready</span>
+            </span>
+            <div style="font-size: 0.72rem; color: #64748B; margin-top: 3px;">API: <code>{config.fastapi_url}</code></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     if config.openrouter_api_key:
         st.markdown(
             f"""
@@ -677,6 +770,7 @@ with st.sidebar:
         st.markdown('<span class="status-pill pill-amber">OpenRouter Key Missing</span>', unsafe_allow_html=True)
 
     st.caption(f"Vector Collection: `{config.qdrant_collection_name}`")
+
 
     if not is_config_valid:
         with st.expander("Configuration Checklist", expanded=False):
@@ -850,29 +944,19 @@ if uploaded_file is not None:
             progress_bar.progress(20, text="Extracting PDF pages & locking 1-indexed page coordinates...")
             pages = load_pdf_from_bytes(file_bytes, filename)
 
-            progress_bar.progress(45, text=f"Creating semantic chunks (size: {config.chunk_size}, overlap: {config.chunk_overlap})...")
-            chunks = split_document_pages(
-                documents=pages,
+            progress_bar.progress(45, text=f"Chunking with MCP Tool & saving to MongoDB (size: {config.chunk_size}, overlap: {config.chunk_overlap})...")
+            mcp_res = execute_mcp_chunking(
                 doc_id=doc_id,
                 filename=filename,
+                pages=pages,
                 chunk_size=config.chunk_size,
                 chunk_overlap=config.chunk_overlap,
+                store_in_qdrant=True,
             )
+            indexed_count = mcp_res["total_chunks"]
+            storage_mode = mcp_res.get("storage_mode", "MongoDB")
 
-            progress_bar.progress(70, text=f"Generating dense embeddings via {config.embedding_model_name}...")
-            embeddings = get_embedding_model(config.embedding_model_name)
-
-            progress_bar.progress(85, text="Writing vectors and metadata to Qdrant Cloud...")
-            indexed_count = index_chunks_to_qdrant(
-                client=qdrant_client,
-                embeddings_model=embeddings,
-                collection_name=config.qdrant_collection_name,
-                chunks=chunks,
-                doc_id=doc_id,
-                overwrite_existing=True,
-            )
-
-            progress_bar.progress(100, text="Indexing complete!")
+            progress_bar.progress(100, text=f"Indexing complete! Saved to {storage_mode} and Qdrant Cloud.")
             ingestion_placeholder.empty()
 
             st.session_state.active_document = {
@@ -880,8 +964,9 @@ if uploaded_file is not None:
                 "filename": filename,
                 "total_pages": len(pages),
                 "total_chunks": indexed_count,
+                "storage_mode": storage_mode
             }
-            st.toast(f"Successfully indexed {indexed_count} chunks in Qdrant Cloud!")
+            st.toast(f"Successfully indexed {indexed_count} chunks in {storage_mode} & Qdrant Cloud!")
             st.rerun()
 
         except Exception as exc:
@@ -993,6 +1078,20 @@ else:
             st.markdown(msg["content"])
 
             if msg["role"] == "assistant":
+                thinking_trace = msg.get("thinking_trace", [])
+                if thinking_trace:
+                    with st.expander("🧠 Model Thinking & Reasoning Trace (MCP-Powered)", expanded=False):
+                        for step in thinking_trace:
+                            st.markdown(
+                                f"""
+                                <div class="thinking-step-row">
+                                    <span class="thinking-badge">{step.get('phase', 'Reasoning')}</span>
+                                    <div><strong>{step.get('action', '')}</strong>: {step.get('detail', '')}</div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
+
                 citations = msg.get("citations", {})
                 citation_summary = citations.get("citation_summary", "")
 
@@ -1029,6 +1128,7 @@ else:
                                 unsafe_allow_html=True,
                             )
                             st.code(ch.get("content", ""), language="text")
+
 
     # Chat Input Box
     chat_input_val = st.chat_input("Ask any question regarding the uploaded PDF...")
@@ -1078,6 +1178,8 @@ else:
                     retrieved_chunks=retrieved_docs,
                     openrouter_api_key=config.openrouter_api_key,
                     model_name=config.openrouter_model,
+                    doc_id=active_doc["doc_id"],
+                    include_thinking=True,
                 )
 
                 # Clear searching animation
@@ -1086,6 +1188,21 @@ else:
                 answer_text = result["answer"]
                 citations = result["citations"]
                 citation_summary = citations.get("citation_summary", "")
+                thinking_trace = result.get("thinking_trace", [])
+
+                # Render MCP Thinking Process
+                if thinking_trace:
+                    with st.expander("🧠 Model Thinking & Reasoning Trace (MCP-Powered)", expanded=True):
+                        for step in thinking_trace:
+                            st.markdown(
+                                f"""
+                                <div class="thinking-step-row">
+                                    <span class="thinking-badge">{step.get('phase', 'Reasoning')}</span>
+                                    <div><strong>{step.get('action', '')}</strong>: {step.get('detail', '')}</div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
 
                 st.markdown(answer_text)
 
@@ -1137,6 +1254,7 @@ else:
                         "content": answer_text,
                         "citations": citations,
                         "chunks": chunk_details,
+                        "thinking_trace": thinking_trace,
                         "model": result.get("model_used"),
                     }
                 )

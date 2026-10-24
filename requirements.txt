@@ -19,5 +19,18 @@ pypdf>=4.2.0
 # Configuration & Utilities
 python-dotenv>=1.0.1
 
+# FastAPI Backend & Server
+fastapi>=0.111.0
+uvicorn>=0.30.0
+python-multipart>=0.0.9
+
+# MongoDB Persistence
+pymongo>=4.7.0
+
+# Model Context Protocol (MCP)
+mcp>=1.0.0
+sse-starlette>=2.1.0
+
 # Testing
 pytest>=7.0.0
+

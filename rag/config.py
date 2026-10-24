@@ -25,11 +25,21 @@ class AppConfig:
     openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "").strip()
     openrouter_model: str = os.getenv("OPENROUTER_MODEL", "recursive/flint-v1.0:free").strip()
     
+    # MongoDB Configuration
+    mongodb_uri: str = os.getenv("MONGODB_URI", "mongodb://localhost:27017").strip()
+    mongodb_db_name: str = os.getenv("MONGODB_DB_NAME", "papermind_rag").strip()
+    
+    # FastAPI Backend Configuration
+    fastapi_host: str = os.getenv("FASTAPI_HOST", "127.0.0.1").strip()
+    fastapi_port: int = int(os.getenv("FASTAPI_PORT", "8000"))
+    fastapi_url: str = os.getenv("FASTAPI_URL", "http://127.0.0.1:8000").strip()
+
     # RAG pipeline constants per workshop specifications
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     chunk_size: int = 1000
     chunk_overlap: int = 400
     top_k: int = 4
+
 
 
 def get_config() -> AppConfig:
