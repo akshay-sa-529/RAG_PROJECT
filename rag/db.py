@@ -20,6 +20,7 @@ class InMemoryStore:
         self.documents: Dict[str, Dict[str, Any]] = {}
         self.chunks: Dict[str, List[Dict[str, Any]]] = {}
         self.thinking_sessions: List[Dict[str, Any]] = []
+        self.chat_sessions: Dict[str, Dict[str, Any]] = {}
 
     def save_document(self, doc_data: Dict[str, Any]) -> None:
         self.documents[doc_data["doc_id"]] = doc_data
@@ -46,6 +47,16 @@ class InMemoryStore:
 
     def get_recent_sessions(self, limit: int = 20) -> List[Dict[str, Any]]:
         return self.thinking_sessions[-limit:]
+
+    def save_chat_session(self, session_data: Dict[str, Any]) -> None:
+        self.chat_sessions[session_data["session_id"]] = session_data
+
+    def get_chat_sessions(self, limit: int = 50) -> List[Dict[str, Any]]:
+        sessions = sorted(self.chat_sessions.values(), key=lambda s: s.get("updated_at", ""), reverse=True)
+        return sessions[:limit]
+
+    def delete_chat_session(self, session_id: str) -> None:
+        self.chat_sessions.pop(session_id, None)
 
 
 class MongoRAGDatabase:
@@ -263,6 +274,63 @@ class MongoRAGDatabase:
             except Exception as exc:
                 logger.error(f"Error fetching thinking sessions from MongoDB: {exc}")
         return self._in_memory.get_recent_sessions(limit)
+
+    def save_chat_session(
+        self,
+        session_id: str,
+        title: str,
+        messages: List[Dict[str, Any]],
+        doc_id: Optional[str] = None,
+        filename: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Saves or updates a full chat conversation session."""
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        record = {
+            "session_id": session_id,
+            "title": title,
+            "doc_id": doc_id,
+            "filename": filename,
+            "messages": messages,
+            "message_count": len(messages),
+            "updated_at": now,
+        }
+        self._in_memory.save_chat_session(record)
+
+        if self._is_connected and self.db is not None:
+            try:
+                self.db.chat_sessions.create_index("session_id", unique=True)
+                self.db.chat_sessions.update_one(
+                    {"session_id": session_id},
+                    {
+                        "$set": record,
+                        "$setOnInsert": {"created_at": now},
+                    },
+                    upsert=True,
+                )
+            except Exception as exc:
+                logger.error(f"Error saving chat session to MongoDB: {exc}")
+        return record
+
+    def get_chat_sessions(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Returns recent chat sessions ordered by most recently updated."""
+        if self._is_connected and self.db is not None:
+            try:
+                return list(
+                    self.db.chat_sessions.find({}, {"_id": 0}).sort("updated_at", -1).limit(limit)
+                )
+            except Exception as exc:
+                logger.error(f"Error fetching chat sessions from MongoDB: {exc}")
+        return self._in_memory.get_chat_sessions(limit)
+
+    def delete_chat_session(self, session_id: str) -> bool:
+        """Deletes a specific chat session by session_id."""
+        self._in_memory.delete_chat_session(session_id)
+        if self._is_connected and self.db is not None:
+            try:
+                self.db.chat_sessions.delete_one({"session_id": session_id})
+            except Exception as exc:
+                logger.error(f"Error deleting chat session from MongoDB: {exc}")
+        return True
 
 
 # Singleton database instance cache

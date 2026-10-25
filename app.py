@@ -6,6 +6,7 @@ Powered by Qdrant Cloud vector search, Hugging Face embeddings, and OpenRouter L
 """
 
 import os
+import uuid
 import streamlit as st
 
 from rag.config import get_config, validate_config
@@ -603,6 +604,211 @@ div.stButton > button[kind="primary"]:hover {
     background: #FFFFFF !important;
     animation: fadeInUp 0.25s ease-out;
 }
+
+/* ---- Hide & Replace Emoji Chat Avatars ---- */
+[data-testid="stChatMessageAvatarUser"],
+[data-testid="stChatMessageAvatarAssistant"] {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+}
+
+[data-testid="stChatMessageAvatarUser"] *,
+[data-testid="stChatMessageAvatarAssistant"] * {
+    display: none !important;
+}
+
+[data-testid="stChatMessageAvatarUser"]::before {
+    content: "";
+    display: block !important;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    box-shadow: 0 0 0 0 rgba(79,70,229,0.45);
+    animation: avatarPulseUser 2.2s infinite;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 18px 18px;
+}
+
+[data-testid="stChatMessageAvatarAssistant"]::before {
+    content: "";
+    display: block !important;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0EA5E9 0%, #4F46E5 100%);
+    box-shadow: 0 0 0 0 rgba(14,165,233,0.45);
+    animation: avatarPulseAI 2.6s infinite;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='11' width='18' height='10' rx='2'/%3E%3Cpath d='M12 2a3 3 0 0 1 3 3v6H9V5a3 3 0 0 1 3-3z'/%3E%3Ccircle cx='8.5' cy='16' r='1' fill='white' stroke='none'/%3E%3Ccircle cx='15.5' cy='16' r='1' fill='white' stroke='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 18px 18px;
+}
+
+@keyframes avatarPulseUser {
+    0%   { box-shadow: 0 0 0 0 rgba(79,70,229,0.45); }
+    60%  { box-shadow: 0 0 0 7px rgba(79,70,229,0); }
+    100% { box-shadow: 0 0 0 0 rgba(79,70,229,0); }
+}
+
+@keyframes avatarPulseAI {
+    0%   { box-shadow: 0 0 0 0 rgba(14,165,233,0.45); }
+    60%  { box-shadow: 0 0 0 7px rgba(14,165,233,0); }
+    100% { box-shadow: 0 0 0 0 rgba(14,165,233,0); }
+}
+
+/* ---- Animated Quick Prompt Cards ---- */
+.prompt-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 14px 0 20px 0;
+}
+
+.prompt-card {
+    background: #FFFFFF;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 16px 14px;
+    cursor: pointer;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: fadeInUp 0.35s ease-out both;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+.prompt-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(79,70,229,0.04), rgba(99,102,241,0.02));
+    opacity: 0;
+    transition: opacity 0.22s ease;
+    border-radius: 14px;
+}
+
+.prompt-card:hover::before { opacity: 1; }
+
+.prompt-card:hover {
+    border-color: #6366F1;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(79,70,229,0.13);
+}
+
+.prompt-card:nth-child(1) { animation-delay: 0.05s; }
+.prompt-card:nth-child(2) { animation-delay: 0.12s; }
+.prompt-card:nth-child(3) { animation-delay: 0.19s; }
+
+.prompt-icon-ring {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.prompt-icon-ring svg {
+    animation: iconFloat 3s ease-in-out infinite;
+}
+
+@keyframes iconFloat {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-2px); }
+}
+
+.prompt-card-text {
+    font-size: 0.87rem;
+    font-weight: 600;
+    color: #1E293B;
+    line-height: 1.4;
+}
+
+.prompt-card-hint {
+    font-size: 0.74rem;
+    color: #94A3B8;
+    font-weight: 400;
+    margin-top: 2px;
+}
+
+/* ---- Chat History Panel ---- */
+.history-section-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.history-item {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 7px;
+    cursor: pointer;
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: fadeInUp 0.25s ease-out;
+    position: relative;
+    overflow: hidden;
+}
+
+.history-item::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, #4F46E5, #7C3AED);
+    border-radius: 3px 0 0 3px;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+
+.history-item:hover::before { opacity: 1; }
+
+.history-item:hover {
+    border-color: #C7D2FE;
+    box-shadow: 0 3px 10px rgba(79,70,229,0.09);
+    transform: translateX(2px);
+}
+
+.history-item-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #1E293B;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 3px;
+}
+
+.history-item-meta {
+    font-size: 0.72rem;
+    color: #94A3B8;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.history-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #CBD5E1;
+    display: inline-block;
+}
 </style>
 """
 
@@ -619,6 +825,12 @@ if "active_document" not in st.session_state:
 
 if "preset_prompt" not in st.session_state:
     st.session_state.preset_prompt = None
+
+if "chat_session_id" not in st.session_state:
+    st.session_state.chat_session_id = str(uuid.uuid4())
+
+if "chat_session_title" not in st.session_state:
+    st.session_state.chat_session_title = "New Conversation"
 
 config = get_config()
 is_config_valid, config_issues = validate_config(config)
@@ -790,8 +1002,73 @@ with st.sidebar:
 
     if st.button("Clear Conversation", use_container_width=True):
         st.session_state.messages = []
+        st.session_state.chat_session_id = str(uuid.uuid4())
+        st.session_state.chat_session_title = "New Conversation"
         st.toast("Conversation cleared.")
         st.rerun()
+
+    st.markdown("---")
+
+    # ── Chat History Panel ────────────────────────────────────────────────────
+    _hist_db = get_rag_database()
+    _all_sessions = _hist_db.get_chat_sessions(limit=40)
+
+    st.markdown(
+        '<div class="history-section-title">'
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">'
+        '<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/>'
+        '</svg> Chat History</div>',
+        unsafe_allow_html=True,
+    )
+
+    if not _all_sessions:
+        st.markdown(
+            '<div style="font-size:0.8rem;color:#94A3B8;padding:8px 0;">No saved conversations yet. Start chatting!</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        for _sess in _all_sessions:
+            _sid   = _sess["session_id"]
+            _title = _sess.get("title", "Untitled")
+            _fname = _sess.get("filename") or ""
+            _mcount = _sess.get("message_count", 0)
+            _updated = _sess.get("updated_at", "")[:10]
+            _is_active = (_sid == st.session_state.chat_session_id)
+
+            border_style = "border-color:#6366F1;background:#F5F3FF;" if _is_active else ""
+            st.markdown(
+                f'<div class="history-item" style="{border_style}" title="{_title}">'
+                f'  <div class="history-item-title">{_title[:38] + "…" if len(_title) > 38 else _title}</div>'
+                f'  <div class="history-item-meta">'
+                f'    <span>{_updated}</span><span class="history-dot"></span>'
+                f'    <span>{_mcount // 2} Q&amp;A</span>'
+                f'    {"<span class=\"history-dot\"></span><span style=\"color:#6366F1;font-weight:600;\">Active</span>" if _is_active else ""}'
+                f'  </div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            _col_restore, _col_del = st.columns([3, 1])
+            with _col_restore:
+                if st.button("↩ Restore", key=f"restore_{_sid}", use_container_width=True):
+                    st.session_state.messages = _sess.get("messages", [])
+                    st.session_state.chat_session_id = _sid
+                    st.session_state.chat_session_title = _title
+                    if _sess.get("doc_id") and _sess.get("filename"):
+                        st.session_state.active_document = {
+                            "doc_id": _sess["doc_id"],
+                            "filename": _sess["filename"],
+                            "total_pages": "–",
+                            "total_chunks": "–",
+                        }
+                    st.rerun()
+            with _col_del:
+                if st.button("🗑", key=f"del_{_sid}", help="Delete this session"):
+                    _hist_db.delete_chat_session(_sid)
+                    if _sid == st.session_state.chat_session_id:
+                        st.session_state.messages = []
+                        st.session_state.chat_session_id = str(uuid.uuid4())
+                        st.session_state.chat_session_title = "New Conversation"
+                    st.rerun()
 
     with st.expander("How the Engine Works"):
         st.markdown(
@@ -1061,20 +1338,70 @@ else:
             '<div class="starter-hint"><span>Quick prompt suggestions:</span></div>',
             unsafe_allow_html=True,
         )
+        st.markdown(
+            """
+            <div class="prompt-cards-grid">
+                <div class="prompt-card" id="prompt-card-1">
+                    <div class="prompt-icon-ring" style="background: linear-gradient(135deg, #EEF2FF, #E0E7FF);">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+                            <line x1="8" y1="18" x2="21" y2="18"/>
+                            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/>
+                            <line x1="3" y1="18" x2="3.01" y2="18"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="prompt-card-text">Summarize key findings</div>
+                        <div class="prompt-card-hint">Overview of main takeaways</div>
+                    </div>
+                </div>
+                <div class="prompt-card" id="prompt-card-2">
+                    <div class="prompt-icon-ring" style="background: linear-gradient(135deg, #F0FDF4, #DCFCE7);">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"/>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="prompt-card-text">What are the core topics?</div>
+                        <div class="prompt-card-hint">Primary arguments &amp; themes</div>
+                    </div>
+                </div>
+                <div class="prompt-card" id="prompt-card-3">
+                    <div class="prompt-icon-ring" style="background: linear-gradient(135deg, #FFF7ED, #FFEDD5);">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="m9 12 2 2 4-4"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="prompt-card-text">Key limitations &amp; conclusions</div>
+                        <div class="prompt-card-hint">Findings &amp; recommendations</div>
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         col_s1, col_s2, col_s3 = st.columns(3)
         with col_s1:
-            if st.button("Summarize key findings", use_container_width=True):
+            if st.button("Summarize key findings", use_container_width=True, key="btn_s1"):
                 query_from_pill = "Summarize the key findings and main takeaways from this document."
         with col_s2:
-            if st.button("What are the core topics?", use_container_width=True):
+            if st.button("What are the core topics?", use_container_width=True, key="btn_s2"):
                 query_from_pill = "What are the primary topics and central arguments presented in this document?"
         with col_s3:
-            if st.button("Key limitations & conclusions", use_container_width=True):
+            if st.button("Key limitations & conclusions", use_container_width=True, key="btn_s3"):
                 query_from_pill = "What conclusions, recommendations, or limitations are noted in this text?"
+
+    # Avatar icons (SVG data URIs — no emojis)
+    AVATAR_USER = "https://api.dicebear.com/7.x/shapes/svg?seed=user&backgroundColor=4f46e5&shape1Color=ffffff&shape2Color=ffffff"
+    AVATAR_AI   = "https://api.dicebear.com/7.x/shapes/svg?seed=ai&backgroundColor=0ea5e9&shape1Color=ffffff&shape2Color=ffffff"
 
     # Display Chat History
     for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
+        _avatar = AVATAR_USER if msg["role"] == "user" else AVATAR_AI
+        with st.chat_message(msg["role"], avatar=_avatar):
             st.markdown(msg["content"])
 
             if msg["role"] == "assistant":
@@ -1136,10 +1463,10 @@ else:
 
     if final_query:
         st.session_state.messages.append({"role": "user", "content": final_query})
-        with st.chat_message("user"):
+        with st.chat_message("user", avatar=AVATAR_USER):
             st.markdown(final_query)
 
-        with st.chat_message("assistant"):
+        with st.chat_message("assistant", avatar=AVATAR_AI):
             # Live Animated Searching Indicator
             searching_container = st.empty()
             searching_container.markdown(
@@ -1257,6 +1584,24 @@ else:
                         "thinking_trace": thinking_trace,
                         "model": result.get("model_used"),
                     }
+                )
+
+                # ── Auto-save chat session ────────────────────────────────
+                _active = st.session_state.active_document or {}
+                _title  = st.session_state.chat_session_title
+                if _title == "New Conversation" and final_query:
+                    _title = (final_query[:55] + "…") if len(final_query) > 55 else final_query
+                    st.session_state.chat_session_title = _title
+                _save_msgs = [
+                    {k: v for k, v in m.items() if k != "chunks"}
+                    for m in st.session_state.messages
+                ]
+                get_rag_database().save_chat_session(
+                    session_id=st.session_state.chat_session_id,
+                    title=_title,
+                    messages=_save_msgs,
+                    doc_id=_active.get("doc_id"),
+                    filename=_active.get("filename"),
                 )
 
             except Exception as query_exc:
