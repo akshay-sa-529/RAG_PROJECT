@@ -32,7 +32,7 @@ Upload any text-based PDF, execute semantic chunking via **MCP Tools**, persist 
   - **While Chunking:** `chunk_document_mcp` splits document pages into semantic chunks, stores records into MongoDB, and indexes vectors into Qdrant Cloud.
   - **While Thinking:** The generation pipeline executes an agentic reasoning loop using `retrieve_context_mcp` to inspect evidence, trace reasoning steps, and verify grounding before answering.
   - **MCP Server Mounted:** Exposes a standard MCP SSE endpoint at `/mcp` on FastAPI for external AI clients (Claude Desktop, Cursor, Antigravity).
-- **MongoDB Persistence:**
+- **MongoDB Persistencee:**
   - Persists document metadata, raw chunk records, and agent thinking/reasoning sessions.
   - Built-in automatic fallback to an in-memory store if MongoDB is offline, ensuring the app never crashes.
 - **FastAPI REST API:**
