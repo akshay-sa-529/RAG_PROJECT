@@ -27,7 +27,8 @@ Upload any text-based PDF, execute semantic chunking via **MCP Tools**, persist 
                       + MongoDB chunks)           Grounding, Trace Steps)                             Citations & MCP Trace
 ```
 
-### Key Highlights
+### Key Highlights :
+
 - **Model Context Protocol (MCP) Integration:**
   - **While Chunking:** `chunk_document_mcp` splits document pages into semantic chunks, stores records into MongoDB, and indexes vectors into Qdrant Cloud.
   - **While Thinking:** The generation pipeline executes an agentic reasoning loop using `retrieve_context_mcp` to inspect evidence, trace reasoning steps, and verify grounding before answering.
