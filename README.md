@@ -2,7 +2,7 @@
 
 A production-ready, enterprise-grade **Retrieval-Augmented Generation (RAG)** application built with **FastAPI**, **Streamlit**, **LangChain**, **Model Context Protocol (MCP)**, **MongoDB**, **Qdrant Cloud**, and **OpenRouter**.
 
-Upload any text-based PDF, execute semantic chunking via **MCP Tools**, persist structured chunks and metadata into **MongoDB**, index vectors into **Qdrant Cloud**, and ask natural language questions with an agentic **MCP Thinking & Reasoning Trace**, strict grounding, and verifiable 1-indexed page citations.
+Upload any text-based PDF, execute semantic chunking via **MCP Tools**, persist structured chunks and metadata into **MongoDB**, index vectors into **Qdrant Cloud**, and ask natural language questions with an agentic **MCP Thinking & Reasoning Trace**, strict grounding, and verifiable 1-indexed pages citations.
 
 ---
 
